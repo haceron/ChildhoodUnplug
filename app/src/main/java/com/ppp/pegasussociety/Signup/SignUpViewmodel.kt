@@ -1,5 +1,94 @@
-package com.ppp.pegasussociety.Authentication.Signup
+package com.ppp.pegasussociety.Signup
 
+/*
+import android.content.Context
+import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.ppp.pegasussociety.Model.SignupResponse
+import com.ppp.pegasussociety.SharedPrefManager
+import com.ppp.pegasussociety.repository.Repository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class SignUpViewmodel @Inject constructor(val repository: Repository)
+    :ViewModel() {
+
+    var parentNameSP by mutableStateOf("")
+    //  var fullNameSP by mutableStateOf("")
+    var countryCodeSP by mutableStateOf("")
+    var phoneSP by mutableStateOf("")
+    var emailSP by mutableStateOf("")
+    var citySP by mutableStateOf("")
+    var otpTxt by mutableStateOf("")
+    var kidsSP by mutableStateOf("")
+    var childNameSP by mutableStateOf("")
+    var childAgeSP by mutableStateOf("")
+
+    val signUpResponseCode: StateFlow<Int> = repository.signUpResponseCode
+    val signUpResponse: StateFlow<SignupResponse> = repository.signUpResponse
+    private val  _selectedCountry = MutableStateFlow("")
+    val selectedCountry: StateFlow<String> = _selectedCountry
+
+    fun signupUser(context: Context) {
+        viewModelScope.launch {
+            //Log.d("signupchecking", "$parentNameSP email: $emailSP ,phone: $phoneSP city: $citySP $kidsSP")
+            repository.signUp(
+                parentNameSP,
+                citySP,
+                emailSP,
+                countryCodeSP,
+                phoneSP,
+                kidsSP,
+                context
+            )
+        }
+    }
+
+    fun initSharedPrefs(sharedPrefManager: SharedPrefManager){
+        if(sharedPrefManager.getFullName()!!.isNotEmpty()){
+            parentNameSP = sharedPrefManager.getFullName()!!
+        }
+        if(sharedPrefManager.getEmail()!!.isNotEmpty()){
+            emailSP = sharedPrefManager.getEmail()!!
+        }
+        if(sharedPrefManager.getPhone()!!.isNotEmpty()){
+            phoneSP = sharedPrefManager.getPhone()!!
+        }
+       */
+/* if(_selectedCountry.value.isEmpty()){
+            _selectedCountry.value = sharedPrefManager.getCountryCode()!!
+        }*//*
+
+        if(sharedPrefManager.getCountryCode()!!.isNotEmpty()){
+            countryCodeSP = sharedPrefManager.getCountryCode()!!
+        }
+        if(sharedPrefManager.getCity()!!.isNotEmpty()){
+            citySP = sharedPrefManager.getCity()!!
+        }
+        if(sharedPrefManager.getKidsNum()!!.isNotEmpty()){
+            kidsSP = sharedPrefManager.getKidsNum()!!
+        }
+    }
+
+  */
+/*  fun onSelectedCountryTextChanged(newText: String){
+        _selectedCountry.value = newText
+
+    }*//*
+
+
+}*/
+
+
+import SignupResponse
 import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.State
@@ -8,21 +97,22 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ppp.pegasussociety.SharedPrefManager
+import com.ppp.pegasussociety.CountryData.CountryCode
 import com.ppp.pegasussociety.Repository.Repository
-import com.ppp.pegasussociety.SignUpResponse.SignUpResponse
+import com.ppp.pegasussociety.SharedPrefManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
 @HiltViewModel
 class SignUpViewmodel @Inject constructor(
     private val repository: Repository
 ) : ViewModel() {
 
-    var NameSP by mutableStateOf("")
-    var mobileNoSP by mutableStateOf("")
+    var parentNameSP by mutableStateOf("")
+    var phoneSP by mutableStateOf("")
     var emailSP by mutableStateOf("")
     var citySP by mutableStateOf("")
     var otpTxt by mutableStateOf("")
@@ -32,8 +122,8 @@ class SignUpViewmodel @Inject constructor(
 
     val signUpResponseCode: StateFlow<Int> = repository.signUpResponseCode
 
-    private val _signUpResponse = MutableStateFlow(SignUpResponse())
-    val signupResponse: StateFlow<SignUpResponse> = _signUpResponse
+    private val _signUpResponse = MutableStateFlow(SignupResponse())
+    val signupResponse: StateFlow<SignupResponse> = _signUpResponse
 
     private val _isSigningUp = MutableStateFlow(false)
     val isSigningUp: StateFlow<Boolean> = _isSigningUp
@@ -60,10 +150,12 @@ class SignUpViewmodel @Inject constructor(
             try {
                 //Log.d("signupchecking", "$parentNameSP email: $emailSP $phoneSP city: $citySP $kidsSP")
                 repository.signUp(
-                    name = NameSP,
+                    name = parentNameSP,
+                  //  city = citySP,
                     email = emailSP,
+                    mobileNo = phoneSP,
                     countryCode = _selectedCountryCode.value.dial_code,
-                    mobileNo = mobileNoSP,
+                //    kids = kidsSP,
                     context = context
                 )
             } finally {
@@ -96,21 +188,14 @@ class SignUpViewmodel @Inject constructor(
 
     fun initSharedPrefs(sharedPrefManager: SharedPrefManager) {
         sharedPrefManager.getFullName()?.takeIf { it.isNotEmpty() }?.let {
-            NameSP = it
+            parentNameSP = it
         }
         sharedPrefManager.getEmail()?.takeIf { it.isNotEmpty() }?.let {
             emailSP = it
         }
         sharedPrefManager.getPhone()?.takeIf { it.isNotEmpty() }?.let {
-            mobileNoSP = it
+            phoneSP = it
         }
-/*        sharedPrefManager.getCity()?.takeIf { it.isNotEmpty() }?.let {
-            citySP = it
-        }*/
-      /*  sharedPrefManager.getKidsNum()?.takeIf { it.isNotEmpty() }?.let {
-            kidsSP = it
-        }*/
-
         // Restore Country Code
         sharedPrefManager.getCountryCode()?.let { savedCode ->
             val matchedCountry = _countryList.value.firstOrNull { it.dial_code == savedCode }
@@ -120,4 +205,12 @@ class SignUpViewmodel @Inject constructor(
         }
     }
 }
+
+  /*  fun onSelectedCountryTextChanged(newText: String){
+        _selectedCountry.value = newText
+
+    }*/
+    /*    private val _selectedCountry = MutableStateFlow("")
+        val selectedCountry: StateFlow<String> = _selectedCountry*/
+
 

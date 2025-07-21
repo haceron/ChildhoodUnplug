@@ -1,7 +1,11 @@
-package com.ppp.pegasussociety.Authentication.Signup
+package com.ppp.pegasussociety.Signup
 
 import android.app.Activity
+import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -10,10 +14,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -22,14 +26,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -56,21 +62,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavController
+import com.ppp.pegasussociety.CountryData.CountryCode
+import com.ppp.pegasussociety.Login.CustomTextField2
+import com.ppp.pegasussociety.Login.LineWithText
+import com.ppp.pegasussociety.utils.Custombtn2
+import com.ppp.pegasussociety.utils.LoadingAlertDialog
 import com.ppp.pegasussociety.R
 import com.ppp.pegasussociety.SharedPrefManager
 import com.ppp.pegasussociety.ui.theme.Greeny
@@ -86,18 +92,19 @@ fun SignupScreen(navController: NavController? = null) {
     val coroutineScope = rememberCoroutineScope()
     val sharedPrefManager = SharedPrefManager(context)
     val signUpViewModel: SignUpViewmodel = hiltViewModel()
+    //val googleViewModel: GoogleAuthViewModel = hiltViewModel()
     val snackbarHostState = remember { SnackbarHostState() }
     val signUpResponseCode by signUpViewModel.signUpResponseCode.collectAsState()
     val isSigningUp by signUpViewModel.isSigningUp.collectAsState()
-    /*
-        val account by googleViewModel.googleSignInResult.collectAsState()
+/*
+    val account by googleViewModel.googleSignInResult.collectAsState()
 
-        var showExtraFields by remember { mutableStateOf(false) }*/
+    var showExtraFields by remember { mutableStateOf(false) }*/
     var showProgressDialog by remember { mutableStateOf(false) }
 
-    /*   var country by remember { mutableStateOf("+91") }
-       var isPickerOpen by remember { mutableStateOf(false) }
-       val loginViewModel: LoginViewModel = hiltViewModel()*/
+ /*   var country by remember { mutableStateOf("+91") }
+    var isPickerOpen by remember { mutableStateOf(false) }
+    val loginViewModel: LoginViewModel = hiltViewModel()*/
     val selectedCountry = signUpViewModel.selectedCountryCode.value
     val countryList = signUpViewModel.countryList.value
 
@@ -163,11 +170,11 @@ fun SignupScreen(navController: NavController? = null) {
 
                 Spacer(modifier = Modifier.height(5.dp))
                 // Text Fields
-                CustomTextField(value = signUpViewModel.NameSP, label = "Name") {
-                    signUpViewModel.NameSP = it
+                CustomTextField(value = signUpViewModel.parentNameSP, label = "Name") {
+                    signUpViewModel.parentNameSP = it
                     sharedPrefManager.saveFullName(it)
                 }
-        /*        CustomTextField(value = signUpViewModel.citySP, label = "City") {
+  /*              CustomTextField(value = signUpViewModel.citySP, label = "City") {
                     signUpViewModel.citySP = it
                     sharedPrefManager.saveCity(it)
                 }*/
@@ -190,24 +197,24 @@ fun SignupScreen(navController: NavController? = null) {
                     Spacer(modifier = Modifier.width(8.dp))
 
                     CustomTextFields(
-                        value = signUpViewModel.mobileNoSP,
+                        value = signUpViewModel.phoneSP,
                         label = "Mobile No.",
                         keyboardType = KeyboardType.Phone,
                         modifier = Modifier.weight(0.6f)
                     ) {
-                        signUpViewModel.mobileNoSP = it
+                        signUpViewModel.phoneSP = it
                         sharedPrefManager.savePhone(it)
                     }
                 }
 
-          /*      CustomTextField(
-                    value = signUpViewModel.kidsSP,
-                    label = "No. of Kids",
-                    keyboardType = KeyboardType.Number
-                ) {
-                    signUpViewModel.kidsSP = it
-                    sharedPrefManager.saveKidsNum(it)
-                }*/
+            /*     CustomTextField(
+                     value = signUpViewModel.kidsSP,
+                     label = "No. of Kids",
+                     keyboardType = KeyboardType.Number
+                 ) {
+                     signUpViewModel.kidsSP = it
+                     sharedPrefManager.saveKidsNum(it)
+                 }*/
                 Spacer(modifier = Modifier.height(10.dp))
                 CustombtnLoad(
                     text = if (isSigningUp) "Verifying..." else "Sign Up",
@@ -216,18 +223,15 @@ fun SignupScreen(navController: NavController? = null) {
                 ) {
                     if (!isSigningUp) {
                         when {
-                            signUpViewModel.NameSP.length < 3 -> {
+                            signUpViewModel.parentNameSP.length < 3 -> {
                                 Toast.makeText(context, "Please enter a valid name", Toast.LENGTH_SHORT).show()
                             }
                             signUpViewModel.emailSP.length < 7 -> {
                                 Toast.makeText(context, "Please enter a valid email", Toast.LENGTH_SHORT).show()
                             }
-                            signUpViewModel.mobileNoSP.length < 6 -> {
+                            signUpViewModel.phoneSP.length < 6 -> {
                                 Toast.makeText(context, "Please enter a valid phone number", Toast.LENGTH_SHORT).show()
                             }
-                       /*     signUpViewModel.citySP.length < 3 -> {
-                                Toast.makeText(context, "Please enter your city's name", Toast.LENGTH_SHORT).show()
-                            }*/
                             else -> {
                                 signUpViewModel.signupUser(context)
                             }
@@ -327,7 +331,7 @@ fun CustomTextField(
     value: String,  // Changed from TextFieldValue to String
     label: String,
     prefix: String? = null,
-    keyboardType: KeyboardType = KeyboardType.Text,// New parameter with default value
+    keyboardType: KeyboardType = KeyboardType.Text ,// New parameter with default value
     onValueChange: (String) -> Unit  // Updated to use String
 ) {
     OutlinedTextField(
@@ -472,144 +476,6 @@ fun CustomTextFields(
 }
 
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CustomTextField2(
-    value: String,
-    label: String,
-    prefix: String? = null,
-    onValueChange: (String) -> Unit
-) {
-    val keyboardController = LocalSoftwareKeyboardController.current
-    val focusManager = LocalFocusManager.current
-
-    OutlinedTextField(
-        value = value,
-        onValueChange = {
-            onValueChange(it)
-
-            // ✅ Auto-hide keyboard when `.com` is typed
-            if (it.contains(".com") && it.length >= 5) {
-                keyboardController?.hide()
-                focusManager.clearFocus()
-            }
-        },
-        label = { Text(label, color = Color.Gray) },
-        singleLine = true,
-        textStyle = TextStyle(color = Color.Black),
-        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(
-            onDone = {
-                keyboardController?.hide()
-                focusManager.clearFocus()
-            }
-        ),
-        colors = TextFieldDefaults.outlinedTextFieldColors(
-            unfocusedBorderColor = LightGreeny,
-            focusedBorderColor = Greeny,
-            cursorColor = Greeny
-        ),
-        leadingIcon = prefix?.let {
-            { Text(text = it, color = Color.White, modifier = Modifier.padding(start = 18.dp)) }
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-    )
-}
-
-@Composable
-fun LineWithText(text: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Divider(modifier = Modifier.weight(1f))
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 8.dp)
-        )
-        Divider(modifier = Modifier.weight(1f))
-    }
-}
-
-@Composable
-fun Custombtn2(
-    text: String,
-    background: Color,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = background,
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .clickable { onClick() }
-    ) {
-        Box(
-            modifier = Modifier
-                .padding(vertical = 12.dp, horizontal = 16.dp)
-                .fillMaxWidth(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = text,
-                textAlign = TextAlign.Center,
-                fontSize = 22.sp,
-                maxLines = 1,
-                style = TextStyle(
-                    color = Greeny, // Match loading button text color
-                    fontWeight = FontWeight.Bold
-                ),
-                modifier = Modifier
-                    .background(background)
-                    .padding(5.dp, 8.dp)
-                    .fillMaxWidth()
-            )
-        }
-    }
-}
-
-
-@Composable
-fun LoadingAlertDialog(){
-    Dialog(onDismissRequest = { }, properties = DialogProperties(
-        dismissOnBackPress = false, dismissOnClickOutside = false
-    )
-    ) {
-        Surface(modifier = Modifier
-            .fillMaxWidth()
-            .height(90.dp)
-            .padding(8.dp),
-
-            shape = RoundedCornerShape(10.dp),
-            shadowElevation = 8.dp
-
-        ) {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight()
-                    .background(Color.White),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ){
-                Text(
-                    text = "Please Wait!!",
-                    modifier = Modifier.padding(8.dp), fontSize = 20.sp
-                )
-                Text(
-                    text = "Loading...",
-                    modifier = Modifier.padding(8.dp)
-                )
-            }
-
-
-        }
-
-
-    }
-}
 
 
 

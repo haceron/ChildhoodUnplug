@@ -18,7 +18,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    private const val AppBaseUrl = "https://pegaplusapi-production.up.railway.app/"
+    private const val AppBaseUrl = "https://childhood-unplugged-production.up.railway.app/api/"
   //  private const val JudgeBaseUrl = "https://judge.me/" // dummy, required by Retrofit
 
     private val client = OkHttpClient.Builder()

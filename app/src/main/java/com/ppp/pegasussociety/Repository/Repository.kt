@@ -1,8 +1,10 @@
 package com.ppp.pegasussociety.Repository
 
 import android.content.Context
+import android.widget.Toast
 import com.ppp.pegasussociety.ApiInterface.AllApi
-import com.ppp.pegasussociety.Authentication.Signup.CountryCode
+import com.ppp.pegasussociety.CountryData.CountryCode
+import com.ppp.pegasussociety.Login.VerifyResponse
 import com.ppp.pegasussociety.SharedPrefManager
 import com.ppp.pegasussociety.SignUpResponse.SignUpResponse
 import kotlinx.coroutines.Dispatchers
@@ -10,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.Response
 import javax.inject.Inject
@@ -83,6 +86,57 @@ class Repository @Inject constructor(private val allApi: AllApi) {
     suspend fun getCountryList(): Response<List<CountryCode>> {
         return withContext(Dispatchers.IO) {
             allApi.getCountry()
+        }
+    }
+
+    private val _loginResponse = MutableStateFlow("wait")
+    val loginResponse: StateFlow<String>
+        get() = _loginResponse
+
+    /*        private val _loginResponseCode = MutableStateFlow(0)
+            val loginResponseCode: StateFlow<Int>
+            get() = _loginResponseCode*/
+    private val _loginResponseCode = MutableStateFlow(0)
+    val loginResponseCode: StateFlow<Int>
+        get() = _loginResponseCode
+
+    suspend fun login(email: String, otp: String, context: Context): Int {
+        return try {
+            val sp = SharedPrefManager(context)
+            val response = allApi.login(
+                RequestBody.create("multipart/form-data".toMediaTypeOrNull(), email),
+                RequestBody.create("multipart/form-data".toMediaTypeOrNull(), otp)
+            )
+
+            if (response.isSuccessful && response.body() != null) {
+                sp.saveLoginStatus(true)
+                _loginResponseCode.emit(response.code())  // Emit response code
+                _loginResponse.emit(response.body()?.message ?: "Login Successful")
+
+                Toast.makeText(context, "Login Successful", Toast.LENGTH_SHORT).show()
+                //Log.d("Login", "Success: ${response.body()?.message} - Code: ${response.code()}")
+                response.code() // ✅ Return response code
+            } else {
+                _loginResponseCode.emit(response.code())
+                _loginResponse.emit("Error in Login: ${response.message()}")
+
+                Toast.makeText(context, "Login Failure!!", Toast.LENGTH_SHORT).show()
+                //Log.d("Login", "Failure: ${response.errorBody()?.string()} - Code: ${response.code()}, ")
+                response.code() // ✅ Return failure code
+            }
+        } catch (e: Exception) {
+            _loginResponse.emit("Something Went Wrong: ${e.message}")
+            //Log.e("Login Error", e.message ?: "Unknown error")
+            500 // Return an error code (e.g., 500 for server error)
+        }
+    }
+
+    suspend fun verifyInput(input: String): VerifyResponse {
+        val response = allApi.verifyInput(input)
+        if (response.isSuccessful && response.body() != null) {
+            return response.body()!!
+        } else {
+            throw Exception("API failed: ${response.code()}")
         }
     }
 

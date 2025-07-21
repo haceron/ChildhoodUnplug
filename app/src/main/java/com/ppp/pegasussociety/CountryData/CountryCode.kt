@@ -1,4 +1,4 @@
-package com.ppp.pegasussociety.Authentication.Signup
+package com.ppp.pegasussociety.CountryData
 
 data class CountryCode(
     val code: String,
@@ -6,3 +6,4 @@ data class CountryCode(
     val flag: String,
     val dial_code: String
 )
+
