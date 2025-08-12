@@ -67,6 +67,8 @@ dependencies {
     implementation(libs.books)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.ui.test.junit4.android)
+    implementation(libs.androidx.databinding.adapters)
+    implementation(libs.androidx.compose.navigation)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -204,8 +206,30 @@ dependencies {
 
     implementation ("com.google.accompanist:accompanist-placeholder-material:0.34.0")
 
+    //    bar chart dependency
+    implementation("com.patrykandpatrick.vico:core:1.13.1")
+    implementation("com.patrykandpatrick.vico:compose:1.13.1")
+    implementation("com.patrykandpatrick.vico:compose-m3:1.13.1")
+
+    // Other Compose dependencies
+    implementation("androidx.compose.material3:material3:1.2.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.1")
+
+
+
 // Required for Compose test runner
     implementation(kotlin("script-runtime"))
+
+    //------------Lottie Animation----------//
+    implementation ("com.airbnb.android:lottie-compose:6.0.0")
+    implementation ("com.google.accompanist:accompanist-pager:0.30.1")
+
+    implementation ("androidx.compose.ui:ui:1.5.0")
+    implementation ("androidx.compose.material3:material3:1.1.0")
+
+
+
+    implementation("com.google.code.gson:gson:2.10.1")
 
 
 }

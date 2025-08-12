@@ -2,12 +2,16 @@ package com.ppp.pegasussociety.Repository
 
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.ui.graphics.Color
 import com.ppp.pegasussociety.ApiInterface.AllApi
 import com.ppp.pegasussociety.CountryData.CountryCode
 import com.ppp.pegasussociety.Login.VerifyResponse
+import com.ppp.pegasussociety.Model.ScreenTimeEntryRequest
+import com.ppp.pegasussociety.Screens.ActivityBannerItem
 import com.ppp.pegasussociety.SharedPrefManager
 import com.ppp.pegasussociety.SignUpResponse.SignUpResponse
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
@@ -19,6 +23,113 @@ import javax.inject.Inject
 
 class Repository @Inject constructor(private val allApi: AllApi) {
 
+    suspend fun getActivitiesByCategory(category: String): List<ActivityBannerItem> {
+        return try {
+            val response = allApi.getPostsByInterest(category) // category is already URL encoded
+            response.map {
+                ActivityBannerItem(
+                    id = it.id,
+                    title = it.title,
+                    imageUrl = it.imageUrl,
+                    bgColor = Color(0xFFB4DB6F),
+                    content = it.content,
+                    attachmentUrl = it.attachmentUrl
+                )
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+
+    suspend fun getActivityLatest(): List<ActivityBannerItem> {
+        return try {
+            val response = allApi.getLatestPosts()
+            response.map {
+                ActivityBannerItem(
+                    id = it.id,
+                    title = it.title,
+                    imageUrl = it.imageUrl,
+                    bgColor = Color(0xFFB4DB6F), // Could be improved using category
+                    content = it.content,
+                    attachmentUrl = it.attachmentUrl
+                )
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun getActivityPopular(): List<ActivityBannerItem>{
+        return try {
+            val response = allApi.getPopularPosts()
+            response.map {
+                ActivityBannerItem(
+                    id = it.id,
+                    title = it.title,
+                    imageUrl = it.imageUrl,
+                    bgColor = Color(0xFFB4DB6F), // Could be improved using category
+                    content = it.content,
+                    attachmentUrl = it.attachmentUrl
+                )
+            }
+
+        }
+        catch (e: Exception){
+            emptyList()
+        }
+    }
+
+    suspend fun getActivityBanners(): List<ActivityBannerItem> {
+        return try {
+            val response = allApi.getAllPosts()
+            response.map {
+                ActivityBannerItem(
+                    id = it.id,
+                    title = it.title,
+                    imageUrl = it.imageUrl,
+                    bgColor = Color(0xFFB4DB6F), // Could be improved using category
+                    content = it.content,
+                    attachmentUrl = it.attachmentUrl
+                )
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun getActivityById(articleId: Int): ActivityBannerItem? {
+        return try {
+            val response = allApi.getPostById(articleId) // Ensure this returns a single item, not a list
+            response.body()?.let {
+                ActivityBannerItem(
+                    id = it.id,
+                    title = it.title,
+                    imageUrl = it.imageUrl,
+                    bgColor = Color(0xFFB4DB6F),
+                    content = it.content,
+                    attachmentUrl = it.attachmentUrl
+                )
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+
+    suspend fun postEntry(entry: ScreenTimeEntryRequest): Result<Unit> {
+        return try {
+            val response = allApi.logScreenTime(entry)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Error: ${response.code()} - ${response.errorBody()?.string()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     private val _signUpResponse = MutableStateFlow<SignUpResponse>(SignUpResponse())
     val signUpResponse : StateFlow<SignUpResponse>
         get() = _signUpResponse
@@ -26,6 +137,7 @@ class Repository @Inject constructor(private val allApi: AllApi) {
     private val _signUpResponseCode = MutableStateFlow<Int>(0)
     val signUpResponseCode : StateFlow<Int>
         get() = _signUpResponseCode
+
 
 
 

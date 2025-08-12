@@ -18,6 +18,8 @@ books = "1.0.0"
 constraintlayout = "2.2.1"
 mediationTestSuite = "3.0.0"
 uiTestJunit4Android = "1.8.2"
+databindingAdapters = "8.11.1"
+composeNavigation = "1.4.1"
 
 
 [libraries]
@@ -45,6 +47,8 @@ androidx-ui-test-android = { group = "androidx.compose.ui", name = "ui-test-andr
 books = { group = "com.google.android.mediahome", name = "books", version.ref = "books" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 androidx-ui-test-junit4-android = { group = "androidx.compose.ui", name = "ui-test-junit4-android", version.ref = "uiTestJunit4Android" }
+androidx-databinding-adapters = { group = "androidx.databinding", name = "databinding-adapters", version.ref = "databindingAdapters" }
+androidx-compose-navigation = { group = "androidx.wear.compose", name = "compose-navigation", version.ref = "composeNavigation" }
 
 
 
