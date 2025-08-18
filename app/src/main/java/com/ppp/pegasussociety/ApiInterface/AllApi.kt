@@ -2,6 +2,9 @@ package com.ppp.pegasussociety.ApiInterface
 
 import com.ppp.pegasussociety.CountryData.CountryCode
 import com.ppp.pegasussociety.Login.VerifyResponse
+import com.ppp.pegasussociety.Model.AddChildRequest
+import com.ppp.pegasussociety.Model.AddChildResponse
+import com.ppp.pegasussociety.Model.ChildrenResponse
 import com.ppp.pegasussociety.Model.PostDto
 import com.ppp.pegasussociety.Model.ResponseData
 import com.ppp.pegasussociety.Model.ScreenTimeApiResponse
@@ -19,6 +22,23 @@ import retrofit2.http.Query
 
 interface AllApi {
 
+    @GET("ChildrenApi/list-by-parent/{parentId}")
+    suspend fun getChild(
+        @Path("parentId") parentId: String
+    ) : ChildrenResponse
+
+    @Multipart
+    @POST("ChildrenApi/add")
+    suspend fun addChild(
+        @Part("ParentId") parentId: String,
+        @Part("ChildrenName") childrenName: RequestBody,
+        @Part("Interest") interest: RequestBody,
+        @Part("FocusArea") focusArea: RequestBody,
+        @Part("Gender") gender: RequestBody,
+        @Part("DOB") DOB: RequestBody
+    ): AddChildResponse
+
+
     @GET("Posts/by-interest/{category}")
     suspend fun getPostsByInterest(@Path("category") category: String): List<PostDto>
 
@@ -28,7 +48,7 @@ interface AllApi {
         @Path("postId") postId: Int
     ): Response<PostDto>
 
-    @GET("Posts/all")
+    @GET("Posts/banner")
     suspend fun getAllPosts(): List<PostDto>
 
     @GET("Posts/latest")

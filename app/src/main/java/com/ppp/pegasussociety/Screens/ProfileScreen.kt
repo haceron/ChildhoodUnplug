@@ -1,6 +1,7 @@
 package com.ppp.pegasussociety.Screens
 
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,15 +19,362 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.ppp.pegasussociety.Model.AddChildRequest
+import com.ppp.pegasussociety.Model.Child
+import com.ppp.pegasussociety.Model.ChildrenResponse
 import com.ppp.pegasussociety.R
+import com.ppp.pegasussociety.SharedPrefManager
+import com.ppp.pegasussociety.ViewModel.AddChildViewModel
 import java.util.*
 
+
+@Composable
+fun ProfileScreen(
+    navController: NavController? = null
+) {
+    val context = LocalContext.current
+    val viewModel: AddChildViewModel = hiltViewModel()
+    val sharedPrefManager = SharedPrefManager(context)
+
+    var showDialog by remember { mutableStateOf(false) }
+    val children by viewModel.children.collectAsState()
+    val status by viewModel.status.collectAsState()
+    val parentId = sharedPrefManager.getID() ?: "USR000001"
+
+    LaunchedEffect(parentId) {
+        viewModel.loadChildren(parentId)
+    }
+
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showDialog = true },
+                containerColor = Color(0xFFB4DB6F)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Child")
+            }
+        },
+        containerColor = Color(0xFFF7FDE2)
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+            Text(
+                "Child Profile",
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(16.dp),
+                color = Color(0xFF2F3E46)
+            )
+
+            LazyColumn(contentPadding = PaddingValues(16.dp)) {
+                items(children) { child ->
+                    ChildCardDynamic(child) {
+                        // Optionally implement delete API here
+                    }
+                }
+            }
+
+            status?.let {
+                Text(
+                    it,
+                    color = if (it.contains("Error")) Color.Red else Color.Green,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+    }
+
+    if (showDialog) {
+        AddChildDialogDynamic(
+            onAdd = { name, interest, focusArea, gender, DOB ->
+                viewModel.addChild(
+                    childrenName = name,
+                    parentId = parentId, // Always from SharedPref
+                    interest = interest,
+                    focusArea = focusArea,
+                    gender = gender,
+                    DOB = DOB
+                )
+                Log.d("ProfileScreen", "Child added: $name, $interest, $focusArea, $gender, $DOB ,$parentId")
+                showDialog = false
+            },
+            onDismiss = { showDialog = false }
+        )
+    }
+}
+
+@Composable
+fun ChildCardDynamic(child: Child, onDelete: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(6.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.babyimg),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(Color.LightGray)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Name: ${child.childrenName}", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("DOB: ${child.dob}", fontSize = 14.sp)
+                Text("Gender: ${child.gender}", fontSize = 14.sp)
+                if (child.interests.isNotEmpty()) Text("Interest: ${child.interests}", fontSize = 14.sp)
+                if (child.focusAreas.isNotEmpty()) Text("Focus Areas: ${child.focusAreas}", fontSize = 14.sp)
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+            }
+        }
+    }
+}
+
+@Composable
+fun AddChildDialogDynamic(
+    onAdd: (String, List<String>, List<String>, String, String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var interestText by remember { mutableStateOf("") }
+    var focusAreaText by remember { mutableStateOf("") }
+    var gender by remember { mutableStateOf("") }
+    var dob by remember { mutableStateOf("") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(shape = RoundedCornerShape(16.dp)) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text("Add Child", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") }
+                )
+                OutlinedTextField(
+                    value = interestText,
+                    onValueChange = { interestText = it },
+                    label = { Text("Interest (comma separated)") }
+                )
+                OutlinedTextField(
+                    value = focusAreaText,
+                    onValueChange = { focusAreaText = it },
+                    label = { Text("Focus Areas (comma separated)") }
+                )
+                OutlinedTextField(
+                    value = gender,
+                    onValueChange = { gender = it },
+                    label = { Text("Gender") }
+                )
+                OutlinedTextField(
+                    value = dob,
+                    onValueChange = { dob = it },
+                    label = { Text("DOB") }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    Button(onClick = {
+                        val interestList = interestText.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                        val focusList = focusAreaText.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                        if (name.isNotBlank()) {
+                            onAdd(name, interestList, focusList, gender, dob)
+                        }
+                    }) {
+                        Text("Add")
+                    }
+                }
+            }
+        }
+    }
+}
+
+/*@Composable
+fun ProfileScreen(
+    navController: NavController? = null
+  //  parentId: String, // Pass parent ID dynamically
+) {
+    val context = LocalContext.current
+   val viewModel: AddChildViewModel = hiltViewModel()
+    val sharedPrefManager = SharedPrefManager(context)
+    var showDialog by remember { mutableStateOf(false) }
+    val children by viewModel.children.collectAsState()
+    val status by viewModel.status.collectAsState()
+    val parentId = sharedPrefManager.getID() ?: "USR000001"   ////////// change it
+*//*
+    LaunchedEffect(parentId) {
+        viewModel.loadChildren(parentId)
+    }*//*
+
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showDialog = true },
+                containerColor = Color(0xFFB4DB6F)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Child")
+            }
+        },
+        containerColor = Color(0xFFF7FDE2)
+    ) { padding ->
+        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            Text(
+                "Child Profile",
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(16.dp),
+                color = Color(0xFF2F3E46)
+            )
+
+            LazyColumn(contentPadding = PaddingValues(16.dp)) {
+                items(children) { child ->
+                    ChildCardDynamic(child) {
+                        // Optionally implement delete API here
+                    }
+                }
+            }
+
+            status?.let {
+                Text(
+                    it,
+                    color = if (it.contains("Error")) Color.Red else Color.Green,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+    }
+
+    if (showDialog) {
+        AddChildDialogDynamic(
+            onAdd = { name, interest, focusArea, gender, DOB, parentId->
+                viewModel.addChild(
+                    childrenName = name,
+                    parentId = parentId,
+                    interest = interest,
+                    focusArea = focusArea,
+                    gender = gender,
+                    DOB = DOB
+                  //  DOB = DOB
+                )
+                showDialog = false
+            },
+            onDismiss = { showDialog = false }
+        )
+    }
+}
+
+@Composable
+fun ChildCardDynamic(child: AddChildRequest, onDelete: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(6.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painter = painterResource(id =  R.drawable.babyimg),  //----child.avatarResId ?:
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(Color.LightGray)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Name: ${child.ChildrenName}", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("Gender: ${child.DOB}", fontSize = 14.sp)
+                Text("Gender: ${child.Gender}", fontSize = 14.sp)
+                child.Interest?.let { Text("Interest: $it", fontSize = 14.sp) }
+                child.FocusArea?.let { Text("Focus Areas: $it", fontSize = 14.sp) }
+
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+            }
+        }
+    }
+}
+
+@Composable
+fun AddChildDialogDynamic(onAdd: (String, List<String>, List<String>, String, String) -> Unit, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+//    val viewModel: AddChildViewModel = hiltViewModel()
+    val sharedPrefManager = SharedPrefManager(context)
+    var name by remember { mutableStateOf("") }
+    var interest by remember { mutableStateOf("") }
+    var focusAreaText by remember { mutableStateOf("") }
+    var gender by remember { mutableStateOf("") }
+    var DOB by remember { mutableStateOf("") }
+    val parentId = sharedPrefManager.getID() ?: "USR000001"
+  //  var parentId by remember { mutableStateOf("") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(shape = RoundedCornerShape(16.dp)) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text("Add Child", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") })
+                OutlinedTextField(value = interest, onValueChange = { interest = it }, label = { Text("Interest") })
+                OutlinedTextField(value = focusAreaText, onValueChange = { focusAreaText = it }, label = { Text("Focus Areas (comma separated)") })
+                OutlinedTextField(value = gender, onValueChange = { gender = it }, label = { Text("Gender") })
+                OutlinedTextField(value = DOB, onValueChange = { DOB = it }, label = { Text("DOB") })
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    Button(onClick = {
+                        val interest = focusAreaText.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                        val focusList = focusAreaText.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                        if (name.isNotBlank()) {
+                            onAdd(name, interest, focusList, gender, DOB, parentId)
+                        }
+                    }) {
+                        Text("Add")
+                    }
+                }
+            }
+        }
+    }
+}*/
+
+
+/*
 @Composable
 fun ProfileScreen(navController: NavController? = null) {
     var children by remember { mutableStateOf(sampleChildren.toMutableList()) }
@@ -176,7 +524,7 @@ data class ChildProfile(
 val sampleChildren = listOf(
     ChildProfile("Aanya", 6, "Girl", "Drawing, Reading", "Very curious", avatarResId = R.drawable.babyimg),
     ChildProfile("Vivaan", 8, "Boy", "Science, Cycling", "Loves math", avatarResId = R.drawable.babyimg)
-)
+)*/
 
 /*import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn

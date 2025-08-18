@@ -96,7 +96,7 @@ class ScreenTimeViewModel @Inject constructor(
         activities: List<String>
     ) {
         val request = ScreenTimeEntryRequest(
-            childrenId = "CHILD0001",
+            childrenId = "USR000001CH1",
             dateTime = dateTime,
             duration = duration,
             activities = activities
@@ -112,7 +112,7 @@ class ScreenTimeViewModel @Inject constructor(
         _submissionState.value = null
     }
 
-    fun fetchLogs(childId: String = "CHILD0001") {
+    fun fetchLogs(childId: String = "USR000001CH1") {
         viewModelScope.launch {
             try {
                 val response = api.getScreenTimeLogs(childId)

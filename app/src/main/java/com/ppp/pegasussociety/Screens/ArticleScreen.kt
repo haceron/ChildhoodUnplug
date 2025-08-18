@@ -91,17 +91,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.wear.compose.navigation.currentBackStackEntryAsState
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.ppp.pegasussociety.Screen
 import com.ppp.pegasussociety.ViewModel.BannerViewModel
 import kotlinx.coroutines.delay
@@ -232,7 +237,7 @@ fun AutoScrollingBanner(
 ) {
     LaunchedEffect(pagerState) {
         while (true) {
-            delay(4000)
+            delay(3000)
             val nextPage = (pagerState.currentPage + 1) % items.size
             pagerState.animateScrollToPage(nextPage)
         }
@@ -341,38 +346,64 @@ fun ActivitySection(
         }
     }
 }
-
 @Composable
-fun ActivityCard1(activity: ActivityBannerItem, onClick: () -> Unit) {
+fun ActivityCard(item: ActivityBannerItem, onClick: () -> Unit) {
     Card(
+        // ✅ 1. Set a fixed width and height for a consistent poster-like card.
         modifier = Modifier
-            .size(width = 160.dp, height = 200.dp)
+            .size(width = 140.dp, height = 210.dp)
             .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Column {
+        // Use a single Box for efficient layering.
+        Box(modifier = Modifier.fillMaxSize()) {
+
+            // Layer 1: The background image fills the entire card.
             AsyncImage(
-                model = activity.imageUrl,
-                contentDescription = activity.title,
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(item.imageUrl)
+                    .crossfade(true)
+                    .build(),
+                placeholder = painterResource(id = android.R.drawable.ic_menu_gallery), // A default placeholder
+                error = painterResource(id = android.R.drawable.ic_delete),       // A default error image
+                contentDescription = item.title,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
+                modifier = Modifier.fillMaxSize()
             )
-            Column(Modifier.padding(12.dp)) {
-                Text(
-                    activity.title,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    maxLines = 1
-                )
-            }
+
+            // ✅ 2. A gradient scrim that covers the bottom half, ensuring it's always visible.
+            Box(Modifier
+                        .fillMaxSize()
+                        .drawBehind {
+                            // 'size' is available here inside the DrawScope
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, Color.Black),
+                                    startY = size.height / 2,
+                                    endY = size.height
+                                )
+                            )
+                        }
+            )
+
+            // Layer 3: The title text, placed on top of the gradient.
+            Text(
+                text = item.title,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                maxLines = 2, // Allow for slightly longer titles
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(12.dp)
+            )
         }
     }
 }
 
-
+/*
 @Composable
 fun ActivityCard(item: ActivityBannerItem, onClick: () -> Unit) {
     Card(
@@ -394,7 +425,7 @@ fun ActivityCard(item: ActivityBannerItem, onClick: () -> Unit) {
             }
         }
     }
-}
+}*/
 
 // ------------------------- PAGER INDICATOR -------------------------
 @Composable

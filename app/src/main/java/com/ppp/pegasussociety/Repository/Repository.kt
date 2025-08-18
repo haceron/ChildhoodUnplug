@@ -6,6 +6,9 @@ import androidx.compose.ui.graphics.Color
 import com.ppp.pegasussociety.ApiInterface.AllApi
 import com.ppp.pegasussociety.CountryData.CountryCode
 import com.ppp.pegasussociety.Login.VerifyResponse
+import com.ppp.pegasussociety.Model.AddChildRequest
+import com.ppp.pegasussociety.Model.AddChildResponse
+import com.ppp.pegasussociety.Model.ChildrenResponse
 import com.ppp.pegasussociety.Model.ScreenTimeEntryRequest
 import com.ppp.pegasussociety.Screens.ActivityBannerItem
 import com.ppp.pegasussociety.SharedPrefManager
@@ -22,6 +25,41 @@ import retrofit2.Response
 import javax.inject.Inject
 
 class Repository @Inject constructor(private val allApi: AllApi) {
+
+    suspend fun addChild(
+        childrenName: String,
+        parentId: String,
+        interest: List<String>,
+        focusArea: List<String>,
+        gender: String,
+        DOB: String
+    ): AddChildResponse {
+        // Convert lists to comma-separated strings
+        val interestStr = interest.joinToString(",")
+        val focusAreaStr = focusArea.joinToString(",")
+
+        // Convert to RequestBody
+        val childrenNamePart = childrenName.toRequestBody("text/plain".toMediaTypeOrNull())
+        val interestPart = interestStr.toRequestBody("text/plain".toMediaTypeOrNull())
+        val focusAreaPart = focusAreaStr.toRequestBody("text/plain".toMediaTypeOrNull())
+        val genderPart = gender.toRequestBody("text/plain".toMediaTypeOrNull())
+        val dobPart = DOB.toRequestBody("text/plain".toMediaTypeOrNull())
+
+        // Call API
+        return allApi.addChild(
+            parentId = parentId,
+            childrenName = childrenNamePart,
+            interest = interestPart,
+            focusArea = focusAreaPart,
+            gender = genderPart,
+            DOB = dobPart
+        )
+    }
+
+    suspend fun getChild(parentId: String):ChildrenResponse{
+              return  allApi.getChild(parentId)
+    }
+
 
     suspend fun getActivitiesByCategory(category: String): List<ActivityBannerItem> {
         return try {

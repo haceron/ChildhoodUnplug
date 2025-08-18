@@ -24,7 +24,7 @@ import com.ppp.pegasussociety.Screens.LogScreen
 import com.ppp.pegasussociety.Screens.ProfileScreen
 import com.ppp.pegasussociety.Screens.ScreenTimerScreen
 import com.ppp.pegasussociety.navigation.LOG_SCREEN_TIME_ROUTE
-
+/*
 @Composable
 fun MainAppScreen() {
     val navController = rememberNavController()
@@ -64,17 +64,26 @@ fun MainAppNavHost(
                 navController = navController
             )
         }
-        composable(BottomNavItem.Timer.route) {
+        composable("screen_timer") {
             LaunchedEffect(Unit) {
                 onBackgroundColorChange(Color(0xFFF0F4F8))
             }
             ScreenTimerScreen(navController)
         }
+
+        composable("logscreen") {
+            LaunchedEffect(Unit) {
+                onBackgroundColorChange(Color(0xFFF0F4F8))
+            }
+            LogScreen(navController)
+        }
+
         composable(BottomNavItem.Profile.route) {
             LaunchedEffect(Unit) {
                 onBackgroundColorChange(Color(0xFFE6E6FA))
             }
-            LogScreen()
+            ProfileScreen(navController)
+            //LogScreen()
         }
         composable(
             route = "article/{articleId}",
@@ -96,6 +105,85 @@ fun MainAppNavHost(
             CategoryDetailScreen(apiKey, displayName, navController)
         }
 
+    }
+}*/
+
+
+@Composable
+fun MainAppScreen(
+    parentId: String = "USR000001" // You can replace this with the logged-in user's parentId
+) {
+    val navController = rememberNavController()
+    var backgroundColor by remember { mutableStateOf(Color(0xFFE0F7FA)) } // Default color
+
+    Scaffold(
+        containerColor = backgroundColor,
+        bottomBar = { HeartyBottomNavigationBar(navController = navController) }
+    ) { innerPadding ->
+        MainAppNavHost(
+            navController = navController,
+            modifier = Modifier.padding(innerPadding),
+            onBackgroundColorChange = { newColor -> backgroundColor = newColor },
+            parentId = parentId
+        )
+    }
+}
+
+@Composable
+fun MainAppNavHost(
+    navController: NavHostController,
+    modifier: Modifier,
+    onBackgroundColorChange: (Color) -> Unit,
+    parentId: String
+) {
+    NavHost(
+        navController = navController,
+        startDestination = "home",
+        modifier = modifier
+    ) {
+        composable("home") {
+            HeartyHomeScreen(
+                onBackgroundColorChange = onBackgroundColorChange,
+                navController = navController
+            )
+        }
+        composable("screen_timer") {
+            LaunchedEffect(Unit) { onBackgroundColorChange(Color(0xFFE0F7FA)) }
+            ScreenTimerScreen(navController)
+        }
+
+        composable("logscreen") {
+            LaunchedEffect(Unit) { onBackgroundColorChange(Color(0xFFE0F7FA)) }
+            LogScreen(navController)
+        }
+
+        composable("profile") {
+            LaunchedEffect(Unit) { onBackgroundColorChange(Color(0xFFE0F7FA)) }
+            ProfileScreen(
+                 navController
+              //  parentId = parentId // Pass parentId dynamically
+            )
+        }
+
+        composable(
+            route = "article/{articleId}",
+            arguments = listOf(navArgument("articleId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val articleId = backStackEntry.arguments?.getInt("articleId") ?: -1
+            ContentScreen(articleId)
+        }
+
+        composable(
+            route = "category/{apiKey}/{displayName}",
+            arguments = listOf(
+                navArgument("apiKey") { type = NavType.StringType },
+                navArgument("displayName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val apiKey = backStackEntry.arguments?.getString("apiKey") ?: ""
+            val displayName = backStackEntry.arguments?.getString("displayName") ?: ""
+            CategoryDetailScreen(apiKey, displayName, navController)
+        }
     }
 }
 
