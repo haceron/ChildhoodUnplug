@@ -108,13 +108,12 @@ fun MainAppNavHost(
     }
 }*/
 
-
 @Composable
 fun MainAppScreen(
-    parentId: String = "USR000001" // You can replace this with the logged-in user's parentId
+    parentId: String = "USR000001" // Replace with logged-in user's parentId
 ) {
     val navController = rememberNavController()
-    var backgroundColor by remember { mutableStateOf(Color(0xFFE0F7FA)) } // Default color
+    var backgroundColor by remember { mutableStateOf(Color(0xFFE0F7FA)) } // Default background
 
     Scaffold(
         containerColor = backgroundColor,
@@ -141,14 +140,17 @@ fun MainAppNavHost(
         startDestination = "home",
         modifier = modifier
     ) {
+        // ✅ Home -> updates background according to current banner color
         composable("home") {
             HeartyHomeScreen(
                 onBackgroundColorChange = onBackgroundColorChange,
                 navController = navController
             )
         }
+
+        // ✅ Reset background to default when not in banner-based screen
         composable("screen_timer") {
-            LaunchedEffect(Unit) { onBackgroundColorChange(Color(0xFFE0F7FA)) }
+            LaunchedEffect(Unit) { onBackgroundColorChange(Color(0xFF836094)) }
             ScreenTimerScreen(navController)
         }
 
@@ -160,19 +162,22 @@ fun MainAppNavHost(
         composable("profile") {
             LaunchedEffect(Unit) { onBackgroundColorChange(Color(0xFFE0F7FA)) }
             ProfileScreen(
-                 navController
-              //  parentId = parentId // Pass parentId dynamically
+                navController = navController
+                // parentId = parentId // Enable if needed in Profile
             )
         }
 
+        // ✅ Article detail screen
         composable(
             route = "article/{articleId}",
             arguments = listOf(navArgument("articleId") { type = NavType.IntType })
         ) { backStackEntry ->
             val articleId = backStackEntry.arguments?.getInt("articleId") ?: -1
+            LaunchedEffect(Unit) { onBackgroundColorChange(Color(0xFFE0F7FA)) } // Reset bg
             ContentScreen(articleId)
         }
 
+        // ✅ Category detail screen
         composable(
             route = "category/{apiKey}/{displayName}",
             arguments = listOf(
@@ -182,9 +187,11 @@ fun MainAppNavHost(
         ) { backStackEntry ->
             val apiKey = backStackEntry.arguments?.getString("apiKey") ?: ""
             val displayName = backStackEntry.arguments?.getString("displayName") ?: ""
+            LaunchedEffect(Unit) { onBackgroundColorChange(Color(0xFFF3B22E)) } // Reset bg
             CategoryDetailScreen(apiKey, displayName, navController)
         }
     }
 }
+
 
 

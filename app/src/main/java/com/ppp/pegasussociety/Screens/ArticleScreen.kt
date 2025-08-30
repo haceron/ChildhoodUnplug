@@ -73,6 +73,7 @@ import com.ppp.pegasussociety.R
 import com.ppp.pegasussociety.ViewModel.BannerViewModel*/
 
 // Data classes for a more robust, data-driven UI
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -107,10 +108,10 @@ import androidx.navigation.NavController
 import androidx.wear.compose.navigation.currentBackStackEntryAsState
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.ppp.pegasussociety.R
 import com.ppp.pegasussociety.Screen
 import com.ppp.pegasussociety.ViewModel.BannerViewModel
 import kotlinx.coroutines.delay
-import retrofit2.http.Url
 
 // --- DATA CLASSES ---
 //data class ActivityBannerItem(val title: String, val imageUrl: String, val bgColor: Color, val content: String)
@@ -139,32 +140,29 @@ data class ActivityBannerItem(
     val attachmentUrl: String?
 )
 
-
 data class ActivityCardItem(
     val title: String,
     val imageUrl: String,
     val content: String
-    //  val tagInterest: List<String>
 )
 
 data class Category(
-    val name: String,       // Display name
-    val apiKey: String,     // API category name (for URL)
-    val icon: ImageVector,
+    val name: String,
+    val apiKey: String,
+    val image: Int,
     val color: Color
 )
 
 // --- SAMPLE DATA ---
 val sampleCategories = listOf(
-    Category("Arts & Crafts", "Arts%20%26%20Crafts", Icons.Default.ContentCut, Color(0xFFFFF9C4)),
-    Category("Science", "Science", Icons.Default.Science, Color(0xFFE0F7FA)),
-    Category("Reading", "Reading", Icons.Default.MenuBook, Color(0xFFF0E68C)),
-    Category("Music", "Music", Icons.Default.MusicNote, Color(0xFFFCE4EC)),
-    Category("Sports", "Sports", Icons.Default.SportsSoccer, Color(0xFFFFE0B2)),
-    Category("Technology", "Technology", Icons.Default.Memory, Color(0xFFDCEDC8)),
-    Category("Mythology", "Mythology", Icons.Default.AutoStories, Color(0xFFD1C4E9))
+    Category("Arts & Crafts", "Arts%20%26%20Crafts", R.drawable.artandcraft , Color(0xFFFFF9C4)),
+    Category("Science", "Science", R.drawable.science, Color(0xFFE0F7FA)),
+    Category("Reading", "Reading", R.drawable.reading, Color(0xFFF0E68C)),
+    Category("Music", "Music", R.drawable.music, Color(0xFFFCE4EC)),
+    Category("Sports", "Sports", R.drawable.sports, Color(0xFFFFE0B2)),
+    Category("Technology", "Technology", R.drawable.technology, Color(0xFFDCEDC8)),
+    Category("Mythology", "Mythology", R.drawable.mythology, Color(0xFFD1C4E9))
 )
-
 
 @Composable
 fun HeartyHomeScreen(
@@ -178,9 +176,18 @@ fun HeartyHomeScreen(
 
     val pagerState = rememberPagerState(pageCount = { bannerItems.size })
 
-    LaunchedEffect(pagerState.currentPage, bannerItems) {
+    /*LaunchedEffect(pagerState.currentPage, bannerItems) {
         if (bannerItems.isNotEmpty()) {
             onBackgroundColorChange(bannerItems[pagerState.currentPage].bgColor)
+        }
+    }*/
+
+    // ✅ Observe currentPage as a Flow
+    LaunchedEffect(pagerState, bannerItems) {
+        snapshotFlow { pagerState.currentPage }.collect { page ->
+            if (bannerItems.isNotEmpty()) {
+                onBackgroundColorChange(bannerItems[page].bgColor)
+            }
         }
     }
 
@@ -229,6 +236,7 @@ fun HeartyHomeScreen(
         }
     }
 }
+
 @Composable
 fun AutoScrollingBanner(
     items: List<ActivityBannerItem>,
@@ -243,26 +251,34 @@ fun AutoScrollingBanner(
         }
     }
 
+    val currentBgColor = if (items.isNotEmpty()) items[pagerState.currentPage].bgColor else Color.White
+
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            pageSpacing = 12.dp
-        ) { page ->
-            val item = items[page]
-            HeroBanner(
-                title = item.title,
-                subtitle = "Make your own Audio Stories with pictures!",
-                imageUrl = item.imageUrl,
-                content = item.content,
-                onReadMoreClick = {
-                    navController.navigate(Screen.Content.createRoute(item.id))
-                },
-                onBannerClick = {
-                    navController.navigate(Screen.Content.createRoute(item.id))
-                }
-            )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(currentBgColor) // ✅ Different background for each banner
+        ) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                pageSpacing = 12.dp
+            ) { page ->
+                val item = items[page]
+                HeroBanner(
+                    title = item.title,
+                    subtitle = "Make your own Audio Stories with pictures!",
+                    imageUrl = item.imageUrl,
+                    content = item.content,
+                    onReadMoreClick = {
+                        navController.navigate(Screen.Content.createRoute(item.id))
+                    },
+                    onBannerClick = {
+                        navController.navigate(Screen.Content.createRoute(item.id))
+                    }
+                )
+            }
         }
         Spacer(modifier = Modifier.height(16.dp))
         PagerIndicator(pagerState = pagerState, pageCount = items.size)
@@ -294,15 +310,19 @@ fun HeroBanner(
                 modifier = Modifier.fillMaxSize()
             )
             Box(
-                modifier = Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
-                        startY = 300f
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
+                            startY = 300f
+                        )
                     )
-                )
             )
             Column(
-                modifier = Modifier.fillMaxSize().padding(20.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp),
                 verticalArrangement = Arrangement.Bottom
             ) {
                 Text(title, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
@@ -346,54 +366,47 @@ fun ActivitySection(
         }
     }
 }
+
 @Composable
 fun ActivityCard(item: ActivityBannerItem, onClick: () -> Unit) {
     Card(
-        // ✅ 1. Set a fixed width and height for a consistent poster-like card.
         modifier = Modifier
             .size(width = 140.dp, height = 210.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        // Use a single Box for efficient layering.
         Box(modifier = Modifier.fillMaxSize()) {
-
-            // Layer 1: The background image fills the entire card.
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(item.imageUrl)
                     .crossfade(true)
                     .build(),
-                placeholder = painterResource(id = android.R.drawable.ic_menu_gallery), // A default placeholder
-                error = painterResource(id = android.R.drawable.ic_delete),       // A default error image
+                placeholder = painterResource(id = android.R.drawable.ic_menu_gallery),
+                error = painterResource(id = android.R.drawable.ic_delete),
                 contentDescription = item.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
-
-            // ✅ 2. A gradient scrim that covers the bottom half, ensuring it's always visible.
-            Box(Modifier
-                        .fillMaxSize()
-                        .drawBehind {
-                            // 'size' is available here inside the DrawScope
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(Color.Transparent, Color.Black),
-                                    startY = size.height / 2,
-                                    endY = size.height
-                                )
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .drawBehind {
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black),
+                                startY = size.height / 2,
+                                endY = size.height
                             )
-                        }
+                        )
+                    }
             )
-
-            // Layer 3: The title text, placed on top of the gradient.
             Text(
                 text = item.title,
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
-                maxLines = 2, // Allow for slightly longer titles
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -402,30 +415,6 @@ fun ActivityCard(item: ActivityBannerItem, onClick: () -> Unit) {
         }
     }
 }
-
-/*
-@Composable
-fun ActivityCard(item: ActivityBannerItem, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .size(width = 160.dp, height = 200.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(4.dp)
-    ) {
-        Column {
-            AsyncImage(
-                model = item.imageUrl,
-                contentDescription = item.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxWidth().height(120.dp)
-            )
-            Column(Modifier.padding(12.dp)) {
-                Text(item.title, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1)
-            }
-        }
-    }
-}*/
 
 // ------------------------- PAGER INDICATOR -------------------------
 @Composable
@@ -436,7 +425,11 @@ fun PagerIndicator(pagerState: PagerState, pageCount: Int) {
                 MaterialTheme.colorScheme.primary
             else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
             Box(
-                modifier = Modifier.padding(2.dp).clip(CircleShape).background(color).size(10.dp)
+                modifier = Modifier
+                    .padding(2.dp)
+                    .clip(CircleShape)
+                    .background(color)
+                    .size(10.dp)
             )
         }
     }
@@ -446,7 +439,10 @@ fun PagerIndicator(pagerState: PagerState, pageCount: Int) {
 @Composable
 fun ClickableSearchBar(modifier: Modifier = Modifier, onSearchClick: () -> Unit = {}) {
     Surface(
-        modifier = modifier.fillMaxWidth().height(56.dp).clickable { onSearchClick() },
+        modifier = modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clickable { onSearchClick() },
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(16.dp),
         tonalElevation = 4.dp
@@ -500,11 +496,11 @@ fun CategoryChip(category: Category, onClick: () -> Unit = {}) {
                 .background(category.color),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                category.icon,
+            Image(
+                painter = painterResource(id = category.image), // ✅ image instead of icon
                 contentDescription = category.name,
-                tint = Color.Black.copy(alpha = 0.7f),
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(72.dp),
+                contentScale = ContentScale.Fit
             )
         }
         Spacer(modifier = Modifier.height(8.dp))
@@ -512,21 +508,6 @@ fun CategoryChip(category: Category, onClick: () -> Unit = {}) {
     }
 }
 
-
-/*
-@Composable
-fun CategoryChip(category: Category, onClick: () -> Unit = {}) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onClick() }) {
-        Box(
-            modifier = Modifier.size(72.dp).clip(CircleShape).background(category.color),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(category.icon, contentDescription = category.name, tint = Color.Black.copy(alpha = 0.7f), modifier = Modifier.size(32.dp))
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(category.name, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-    }
-}*/
 
 // ------------------------- BOTTOM NAV -------------------------
 sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: String) {
@@ -560,6 +541,7 @@ fun HeartyBottomNavigationBar(navController: NavController) {
         }
     }
 }
+
 
 
 

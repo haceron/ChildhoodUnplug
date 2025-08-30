@@ -154,5 +154,6 @@ class ScreenTimeViewModel @Inject constructor(
             overallAverage = overallAvg.toLong(),
             weeklyTrendPercentage = trendPercent
         )
+
     }
 }

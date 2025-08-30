@@ -42,29 +42,21 @@ import kotlin.math.abs
 import kotlin.math.roundToLong*/
 
 // Using a richer color palette by uncommenting your original colors
-import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.with
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.outlined.CalendarToday
@@ -74,23 +66,595 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.ppp.pegasussociety.ViewModel.ScreenTimeViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
-import kotlin.math.roundToLong
+
+import androidx.compose.animation.*
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.res.painterResource
+import com.ppp.pegasussociety.Model.TrendData
+import com.ppp.pegasussociety.R
+
+// --- DATA & COLORS (Setup) ---
 
 
-// Data classes and sample data from your code
+// --- DATA & COLORS (Setup) ---
+
+object HabitTrackerColors {
+    val ScreenBackground = Color(0xFFE57B7D)
+    val FilterSelected = Color(0xFFFDD835)
+    val FilterUnselected = Color.White
+    val FilterTextSelected = Color.Black.copy(alpha = 0.8f)
+    val FilterTextUnselected = Color.Black.copy(alpha = 0.6f)
+    val DetailsCardBackground = Color(0xFFEDE7F6)
+    val InsightsCardBackground = Color(0xFFFF7250)
+    val AchievementCardBackground = Color(0xFFFEEAE0)
+    val AchievementIconTint = Color(0xFF2E7D32)
+    val PrimaryText = Color.Black
+}
+
+val activityColors = mapOf(
+    "Feed" to Color(0xFF00ACC1),
+    "Outdoor" to Color(0xFF7CB342),
+    "Before Sleep" to Color(0xFF5E35B1),
+    "Study" to Color(0xFFFDD835),
+    "Other" to Color(0xFFF8BBD0)
+)
+
+data class DailyLog(
+    val date: String,
+    val totalDuration: Long,
+    val activitiesBreakdown: Map<String, Long>
+) {
+    val parsedDate: LocalDate by lazy { LocalDate.parse(date) }
+}
+
+data class DailyScreenTime(
+    val date: LocalDate,
+    val totalMinutes: Long,
+    val activitiesBreakdown: Map<String, Long>
+)
+
+data class TrendData(
+    val last7DaysAverage: Long? = null,
+    val overallAverage: Long? = null,
+    val weeklyTrendPercentage: Double? = null
+)
+
+// --- MAIN SCREEN COMPOSABLE ---
+
+@OptIn(ExperimentalAnimationApi::class)
+@Composable
+fun ScreenTimerScreen(
+    navController: NavController? = null,
+    viewModel: ScreenTimeViewModel = hiltViewModel()
+) {
+    val logs by viewModel.dailyLogs.collectAsState()
+    val trendData by viewModel.trendData.collectAsState()
+
+    var selectedRange by remember { mutableStateOf("10 Days") }
+    var selectedDailyData by remember { mutableStateOf<DailyScreenTime?>(null) }
+
+    val filteredLogs = remember(logs, selectedRange) {
+        val now = LocalDate.now()
+        when (selectedRange) {
+            "10 Days" -> logs.filter { it.parsedDate >= now.minusDays(10) }
+            "Last Month" -> logs.filter { it.parsedDate >= now.minusMonths(1) }
+            else -> logs
+        }
+    }
+
+    val aggregatedData = remember(filteredLogs) {
+        filteredLogs.map {
+            DailyScreenTime(
+                date = it.parsedDate,
+                totalMinutes = it.totalDuration,
+                activitiesBreakdown = it.activitiesBreakdown
+            )
+        }.sortedBy { it.date }
+    }
+
+    // FIX: Re-introduced Scaffold to properly host the FAB for the entire screen.
+    Scaffold(
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                text = { Text("Add Entry") },
+                icon = { Icon(Icons.Default.Add, contentDescription = "Add Entry") },
+                onClick = { navController?.navigate("logscreen") },
+                containerColor = HabitTrackerColors.FilterSelected,
+                contentColor = HabitTrackerColors.FilterTextSelected
+            )
+        },
+        containerColor = Color.Transparent // Make scaffold background transparent to see our custom one
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(paddingValues) // Apply padding from the Scaffold
+        ) {
+            ScreenBackground()
+
+            if (logs.isEmpty()) {
+                EmptyState()
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(2.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text(
+                                "Your Digital Habit Tracker",
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 16.dp)
+                            )
+                            FilterButtons(selectedRange) { newRange ->
+                                selectedRange = newRange
+                                selectedDailyData = null
+                            }
+                        }
+                    }
+
+                    item {
+                        ScreenTimeSummaryCard(
+                            data = aggregatedData,
+                            selectedRange = selectedRange
+                        )
+                    }
+
+                    item {
+                        DailyBreakdownChart(
+                            data = aggregatedData,
+                            onBarClick = { dailyData ->
+                                selectedDailyData = if (selectedDailyData?.date == dailyData.date) null else dailyData
+                            }
+                        )
+                    }
+
+                    item {
+                        AnimatedContent(
+                            targetState = selectedDailyData,
+                            transitionSpec = {
+                                fadeIn(animationSpec = tween(300)) + scaleIn(initialScale = 0.92f) with
+                                        fadeOut(animationSpec = tween(200)) + scaleOut(targetScale = 0.92f)
+                            }, label = "detailsCardAnimation"
+                        ) { targetData ->
+                            if (targetData != null) {
+                                DailyDetailsCard(dailyData = targetData)
+                            }
+                        }
+                    }
+
+                    item {
+                        InsightsCard(
+                            trendData = trendData,
+                            aggregatedData = aggregatedData
+                        )
+                    }
+
+                    item { Spacer(modifier = Modifier.height(64.dp)) } // Spacer for FAB visibility
+                }
+            }
+        }
+    }
+}
+
+// --- REUSABLE UI COMPONENTS ---
+
+@Composable
+fun EmptyState(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxSize().padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Analytics,
+            contentDescription = "Analytics Icon",
+            modifier = Modifier.size(80.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Text(
+            "No screen time data yet.",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Medium
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            "Log your first entry to start tracking your digital habits.",
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+fun ScreenBackground() {
+    Canvas(modifier = Modifier.fillMaxWidth().height(250.dp)) {
+        val path = Path().apply {
+            moveTo(0f, 0f)
+            lineTo(size.width, 0f)
+            lineTo(size.width, size.height * 0.6f)
+            quadraticBezierTo(
+                x1 = size.width / 2,
+                y1 = size.height,
+                x2 = 0f,
+                y2 = size.height * 0.6f
+            )
+            close()
+        }
+        drawPath(path, color = HabitTrackerColors.ScreenBackground)
+    }
+}
+
+@Composable
+fun FilterButtons(selected: String, onSelect: (String) -> Unit) {
+    val options = listOf("10 Days", "Last Month", "All")
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        options.forEach { label ->
+            val isSelected = selected == label
+            Button(
+                onClick = { onSelect(label) },
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isSelected) HabitTrackerColors.FilterSelected else HabitTrackerColors.FilterUnselected,
+                    contentColor = if (isSelected) HabitTrackerColors.FilterTextSelected else HabitTrackerColors.FilterTextUnselected
+                ),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = if (isSelected) 4.dp else 1.dp),
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 10.dp)
+            ) {
+                Text(label, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+@Composable
+fun ScreenTimeSummaryCard(data: List<DailyScreenTime>, selectedRange: String) {
+    val totalMinutes = remember(data) { data.sumOf { it.totalMinutes } }
+    val averageMinutes = remember(data) { if (data.isNotEmpty()) totalMinutes / data.size else 0 }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(4.dp),
+        shape = RoundedCornerShape(
+            topStart = 24.dp,
+            topEnd = 24.dp
+        ),
+        colors = CardDefaults.cardColors(containerColor =  HabitTrackerColors.AchievementCardBackground)//MaterialTheme.colorScheme.surface)
+    ) {
+        Row(
+            modifier = Modifier.padding(vertical = 20.dp, horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                Text(text = formatDuration(averageMinutes), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(text = "Daily Average", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                Text(text = formatDuration(totalMinutes), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(text = "Total in $selectedRange", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+// CRASH FIX: This composable is now corrected and stable.
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun DailyBreakdownChart(
+    data: List<DailyScreenTime>,
+    onBarClick: (DailyScreenTime) -> Unit
+) {
+    val maxTime = remember(data) {
+        (data.maxOfOrNull { it.totalMinutes }?.toFloat() ?: 1f).coerceAtLeast(60f)
+    }
+
+    Card(
+        elevation = CardDefaults.cardElevation(4.dp),
+        shape = RoundedCornerShape(
+            bottomEnd = 24.dp,
+            bottomStart = 24.dp
+        ),
+        colors = CardDefaults.cardColors(HabitTrackerColors.AchievementCardBackground)
+     //   colors = HabitTrackerColors.AchievementCardBackground//CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Text("Daily Breakdown", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(16.dp))
+
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                data.forEach { dailyData ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { onBarClick(dailyData) },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = dailyData.date.format(DateTimeFormatter.ofPattern("d MMM")),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.width(50.dp)
+                        )
+
+                        // CRASH FIX: Replaced the unstable weighted Row with a Box using a width fraction.
+                        // This is a much safer way to create a proportional layout.
+                        Box(
+                            modifier = Modifier.weight(1f),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            val barFraction = (dailyData.totalMinutes.toFloat() / maxTime).coerceIn(0f, 1f)
+                            SegmentedProgressBar(
+                                activities = dailyData.activitiesBreakdown,
+                                modifier = Modifier.fillMaxWidth(barFraction)
+                            )
+                        }
+
+                        Text(
+                            text = formatDuration(dailyData.totalMinutes),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.width(55.dp),
+                            textAlign = TextAlign.End
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+            Text("Legend", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(12.dp))
+
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.Start),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                activityColors.forEach { (name, color) -> LegendItem(name, color) }
+            }
+        }
+    }
+}
+
+@Composable
+fun SegmentedProgressBar(activities: Map<String, Long>, modifier: Modifier = Modifier, height: androidx.compose.ui.unit.Dp = 20.dp) {
+    val totalDuration = activities.values.sum().toFloat().coerceAtLeast(1f)
+
+    Row(
+        modifier = modifier
+            .height(height)
+            .clip(RoundedCornerShape(10.dp))
+            .background(HabitTrackerColors.AchievementCardBackground)
+          //  .background(MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        activities.entries.sortedBy { it.key }.forEach { (activity, duration) ->
+            val color = activityColors[activity] ?: activityColors["Other"]!!
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(duration.toFloat() / totalDuration)
+                    .background(color)
+            )
+        }
+    }
+}
+
+@Composable
+fun DailyDetailsCard(dailyData: DailyScreenTime) {
+    Card(
+        elevation = CardDefaults.cardElevation(4.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = HabitTrackerColors.AchievementCardBackground)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Details for ${dailyData.date.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = HabitTrackerColors.PrimaryText
+            )
+            Text(
+                text = "Total Screen Time: ${formatDuration(dailyData.totalMinutes)}",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF5E35B1) // Purple from legend
+            )
+            HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                val sortedActivities = dailyData.activitiesBreakdown.entries.sortedByDescending { it.value }
+                val totalMinutes = dailyData.totalMinutes.coerceAtLeast(1).toFloat()
+
+                sortedActivities.forEach { (activity, duration) ->
+                    val percentage = (duration / totalMinutes) * 100
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(modifier = Modifier.size(10.dp).background(activityColors[activity] ?: Color.Gray, CircleShape))
+                            Text(text = activity, style = MaterialTheme.typography.bodyMedium, color = HabitTrackerColors.PrimaryText)
+                        }
+                        Text(
+                            text = "${formatDuration(duration)} (${"%.0f".format(percentage)}%)",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = HabitTrackerColors.PrimaryText.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// FIX: Removed the onAddEntryClick parameter as the FAB is now handled by the Scaffold.
+@Composable
+fun InsightsCard(
+    trendData: TrendData,
+    aggregatedData: List<DailyScreenTime>
+) {
+    if (aggregatedData.isEmpty()) return
+
+    val trend = trendData.weeklyTrendPercentage
+    val isReduction = trend != null && trend < 0
+
+    val busiestDay = remember(aggregatedData) { aggregatedData.maxByOrNull { it.totalMinutes } }
+    val topActivity = remember(aggregatedData) {
+        aggregatedData
+            .flatMap { it.activitiesBreakdown.entries }
+            .groupBy({ it.key }, { it.value })
+            .mapValues { it.value.sum() }
+            .maxByOrNull { it.value }
+    }
+
+    Card(
+        elevation = CardDefaults.cardElevation(4.dp),
+        colors = CardDefaults.cardColors(containerColor = HabitTrackerColors.InsightsCardBackground),
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Text("Insights & Trends",color = Color.White ,style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(16.dp))
+
+            if (isReduction) {
+                AchievementUnlocked(percentage = abs(trend!!))
+                Spacer(Modifier.height(16.dp))
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                busiestDay?.let {
+                    InsightItem(
+                      //  icon = Icons.Outlined.CalendarToday,
+                        image = R.drawable.calendar,
+                        label = "Busiest Day",
+                        value = "${it.date.dayOfMonth} ${it.date.month.name.take(3)}",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                topActivity?.let {
+                    InsightItem(
+                        image = R.drawable.lifestyle,
+                        label = "Top Activity",
+                        value = it.key,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AchievementUnlocked(percentage: Double) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = HabitTrackerColors.AchievementCardBackground),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+           /* Icon(
+                Icons.Default.WorkspacePremium,
+                contentDescription = "Achievement",
+                tint = HabitTrackerColors.AchievementIconTint,
+                modifier  = Modifier.size(40.dp)
+            )*/
+           // Image(imageVector = R.drawable.badge,)
+            Image(painter = painterResource(R.drawable.badge),
+                contentDescription = "Achievements",
+                modifier = Modifier.size(60.dp)
+            )
+            Column {
+                Text(
+                    "Great Progress!",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = HabitTrackerColors.AchievementIconTint,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "You've cut your weekly average by ${"%.1f".format(percentage)}%. Keep up the mindful usage!",
+                    style = MaterialTheme.typography.bodyMedium,
+                    lineHeight = 20.sp,
+                    color = HabitTrackerColors.AchievementIconTint.copy(alpha = 0.8f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun InsightItem(image: Int, label: String, value: String, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+
+        Image(
+            painter = painterResource(id = image),
+            contentDescription = null,
+            modifier = Modifier.size(40.dp)
+        )
+        Column {
+            Text(text = label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(text = value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+fun LegendItem(label: String, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(modifier = Modifier.size(14.dp).background(color = color, shape = CircleShape))
+        Text(text = label, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+// --- UTILITY FUNCTION ---
+
+fun formatDuration(totalMinutes: Long): String {
+    if (totalMinutes < 0) return "0m"
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    return when {
+        hours > 0 && minutes > 0 -> "${hours}h ${minutes}m"
+        hours > 0 -> "${hours}h"
+        else -> "${minutes}m"
+    }
+}
+
+
+
+/*// Data classes and sample data from your code
 val activityColors = mapOf(
     "Feed" to Color(0xFF00ACC1),
     "Outdoor" to Color(0xFF7CB342),
@@ -121,6 +685,7 @@ data class TrendData(val weeklyTrendPercentage: Double?)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun ScreenTimerScreen(navController: NavController? = null) {
+    val viewModel : ScreenTimeViewModel = hiltViewModel()
     // This part remains unchanged, using your ViewModel
     // val viewModel: ScreenTimeViewModel = hiltViewModel()
     // val logs by viewModel.dailyLogs.collectAsState()
@@ -662,7 +1227,7 @@ fun formatDuration(totalMinutes: Long): String {
         hours > 0 -> "${hours}h"
         else -> "${minutes}m"
     }
-}
+}*/
 /*
 import androidx.compose.animation.*
 import androidx.compose.foundation.Canvas
